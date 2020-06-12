@@ -78,9 +78,8 @@ class NeuralTree(object):
         return minDist, updated_n, winner
 
 
-    def fit(self, x, y, shuffle=True):
-        x = np.array(x)
-        X = np.array(tuple(zip(x, y)))
+    def fit(self, X, y, shuffle=True):
+        X = np.array(tuple(zip(X, y)))
         for i in range(self.n_estimators):
             if shuffle: 
                 np.random.shuffle(X)
@@ -89,14 +88,15 @@ class NeuralTree(object):
             if self.verbose != 0:
                 print('====== Tree No.{} ======='.format(i+1))
                 self.p_tree(tree)
+        return self
 
 
-    def predict(self, x):
-        x = np.array(x)
-        assert x.ndim >= 2, 'x dim must be >= 2'
+    def predict(self, X):
+        X = np.array(X)
+        assert X.ndim >= 2, 'x dim must be >= 2'
 
         pre_y = list()
-        for e in x:
+        for e in X:
             pre_labels = np.array([], dtype=int)
             for subRoot in self.estimators:
                 while subRoot.children:
@@ -110,7 +110,12 @@ class NeuralTree(object):
         return pre_y
 
 
-    def p_neuron(self, n):
+    def score(self, X, y, sample_weight=None):
+        from sklearn.metrics import accuracy_score
+        return accuracy_score(y, self.predict(X), sample_weight=sample_weight)
+
+
+    def p_tree(self, n):
         print('idx ==>'+str(n.idx))
         print('W ==>'+str(n.W))
         print('i ==>'+str(n.n_updated))
@@ -119,10 +124,6 @@ class NeuralTree(object):
         for c in n.children:
             print(str(c.idx), end=' ')
         print(end='\n\n')
-
-
-    def p_tree(self, n):
-        self.p_neuron(n)
     
         for c in n.children:
             self.p_tree(c)
