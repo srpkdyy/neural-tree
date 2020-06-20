@@ -1,3 +1,4 @@
+import random
 import numpy as np
 from operator import itemgetter
 
@@ -34,6 +35,7 @@ class NeuralTree(object):
         self.estimators = list()
 
         if not random_state is None:
+            random.seed(random_state)
             np.random.seed(random_state)
 
 
@@ -78,13 +80,19 @@ class NeuralTree(object):
         return minDist, updated_n, winner
 
 
-    def fit(self, X, y, shuffle=True):
-        X = np.array(tuple(zip(X, y)))
+    def fit(self, X, y, shuffle=True, bagging=False):
+        ds = list(zip(X, y))
         for i in range(self.n_estimators):
             if shuffle: 
-                np.random.shuffle(X)
-            tree = self.train(X)
+                np.random.shuffle(ds)
+
+            _X = ds
+            if bagging:
+                _X = random.choices(ds, k=len(ds))
+
+            tree = self.train(np.array(_X))
             self.estimators.append(tree)
+
             if self.verbose != 0:
                 print('====== Tree No.{} ======='.format(i+1))
                 self.p_tree(tree)
