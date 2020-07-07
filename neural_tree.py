@@ -1,5 +1,6 @@
 import random
 import numpy as np
+from tqdm import tqdm
 from operator import itemgetter
 
 
@@ -33,6 +34,7 @@ class NeuralTree(object):
         self.threshold = threshold
         self.verbose = verbose
         self.estimators = list()
+        self.n_neurons = list()
 
         if not random_state is None:
             random.seed(random_state)
@@ -40,7 +42,7 @@ class NeuralTree(object):
 
 
     def train(self, E):
-        N = E.shape[0]
+        N = len(E)
         root = Neuron(0, *E[0])
         j = 1
         for i in range(1, N):
@@ -64,7 +66,7 @@ class NeuralTree(object):
             for n in updated_n:
                 n.update(e[0])
 
-        return root
+        return root, j
 
 
     def test(self, e, subRoot, minDist, updated_n):
@@ -81,6 +83,7 @@ class NeuralTree(object):
 
 
     def fit(self, X, y, shuffle=True, bagging=False):
+        X = np.array(X)
         ds = list(zip(X, y))
         for i in range(self.n_estimators):
             if shuffle: 
@@ -90,8 +93,9 @@ class NeuralTree(object):
             if bagging:
                 _X = random.choices(ds, k=len(ds))
 
-            tree = self.train(np.array(_X))
+            tree, j = self.train(_X)
             self.estimators.append(tree)
+            self.n_neurons.append(j)
 
             if self.verbose != 0:
                 print('====== Tree No.{} ======='.format(i+1))
@@ -123,6 +127,33 @@ class NeuralTree(object):
         return accuracy_score(y, self.predict(X), sample_weight=sample_weight)
 
 
+    def prune(self, alpha=0.5):
+        if type(alpha) is float:
+            alpha = [alpha] * self.n_estimators
+
+        for i in range(self.n_estimators):
+            if self.estimators[i].children:
+                self._prune(i, self.estimators[i], alpha[i])
+
+
+    def _prune(self, idx, subtree, alpha):
+        for i in range(len(subtree.children)):
+            if subtree.children[i].children:
+                self._prune(idx, subtree.children[i], alpha)
+
+        if any([child.children for child in subtree.children]):
+            return
+
+        labels = [child.label for child in subtree.children]
+        label_cnt = np.bincount(labels)
+        label, ratio = np.argmax(label_cnt), np.max(label_cnt) / len(labels)
+
+        if ratio >= alpha:
+            subtree.label = label
+            self.n_neurons[idx] -= len(subtree.children)
+            del subtree.children[:]
+
+
     def p_tree(self, n):
         print('idx ==>'+str(n.idx))
         print('W ==>'+str(n.W))
@@ -139,8 +170,11 @@ class NeuralTree(object):
 
 
 if __name__ == '__main__':
-    E = [[1], [2], [3], [4]]
+    E = [[1, 1], [2, 2], [3, 3], [4, 4]]
+    t = [1, 2, 3, 4]
     nt = NeuralTree(n_estimators=1, verbose=1)
-    nt.fit(E, E, shuffle=False)
-    print(nt.predict([[3.1]]))
+    nt.fit(E, t, shuffle=False)
+    print(nt.predict([[3.1, 3.1]]))
+    nt.prune()
+    print('pruned')
 
