@@ -36,7 +36,7 @@ class NeuralTree(object):
         self.estimators = list()
         self.n_neurons = list()
 
-        if not random_state is None:
+        if random_state is not None:
             random.seed(random_state)
             np.random.seed(random_state)
 
